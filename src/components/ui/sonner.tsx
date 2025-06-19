@@ -23,3 +23,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
 }
 
 export { Toaster }
+
+export function SonnerProvider() {
+  return <Toaster richColors position="top-right" />;
+}
