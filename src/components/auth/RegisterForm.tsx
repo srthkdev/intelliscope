@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
+import { GoogleAuthButton } from './GoogleAuthButton'
 
 import {
   Card,
@@ -14,10 +15,12 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  CardFooter,
 } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -94,6 +97,14 @@ export function RegisterForm() {
           </Button>
         </form>
       </CardContent>
+      <CardFooter className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 w-full">
+          <Separator className="flex-1" />
+          <span className="text-sm text-muted-foreground">OR</span>
+          <Separator className="flex-1" />
+        </div>
+        <GoogleAuthButton />
+      </CardFooter>
     </Card>
   )
 }

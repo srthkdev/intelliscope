@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
+import { GoogleAuthButton } from './GoogleAuthButton'
 
 import {
   Card,
@@ -14,22 +15,23 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  CardFooter,
 } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
-const registerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email'),
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
-type RegisterFormValues = z.infer<typeof registerSchema>
+type LoginFormValues = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const {
-    register: registerUser,
+    login,
     loading,
     error,
     user,
@@ -40,16 +42,16 @@ export function LoginForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
   })
 
-  const onSubmit = async (data: RegisterFormValues) => {
-    await registerUser(data.name, data.email, data.password)
+  const onSubmit = async (data: LoginFormValues) => {
+    await login(data.email, data.password)
     if (error) {
       toast.error(error)
     } else {
-      toast.success('Registration successful!')
+      toast.success('Login successful!')
     }
   }
 
@@ -60,18 +62,11 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
-        <CardTitle className="text-xl">Create an account</CardTitle>
-        <CardDescription>Start your journey with us today.</CardDescription>
+        <CardTitle className="text-xl">Login to your account</CardTitle>
+        <CardDescription>Enter your credentials to access your account.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-6">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" {...register('name')} />
-            {errors.name && (
-              <p className="text-sm text-red-500">{errors.name.message}</p>
-            )}
-          </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" {...register('email')} />
@@ -88,10 +83,18 @@ export function LoginForm() {
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? 'Logging in...' : 'Login'}
           </Button>
         </form>
       </CardContent>
+      <CardFooter className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 w-full">
+          <Separator className="flex-1" />
+          <span className="text-sm text-muted-foreground">OR</span>
+          <Separator className="flex-1" />
+        </div>
+        <GoogleAuthButton />
+      </CardFooter>
     </Card>
   )
 }
