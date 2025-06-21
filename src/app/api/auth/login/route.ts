@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { account } from '@/lib/services/appwrite/client';
+import { createAdminClient } from '@/lib/services/appwrite/server';
 import { getUserByAppwriteId } from '@/lib/services/appwrite/database';
 import { z } from 'zod';
 
@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, password } = loginSchema.parse(body);
     
+    const { account } = await createAdminClient();
     // Create session
-    const session = await account.createSession(email, password);
+    const session = await account.createEmailPasswordSession(email, password);
     
     // Get user data
     const user = await account.get();
@@ -28,7 +29,14 @@ export async function POST(req: NextRequest) {
       // We'll just return the Appwrite user for now
     }
     
-    return NextResponse.json({ session, user });
+    const response = NextResponse.json({ session, user });
+    response.cookies.set(`a_session_${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`, session.$id, {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+    return response;
   } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json({ error: error.message }, { status: 400 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { account } from '@/lib/services/appwrite/client';
+import { createAdminClient } from '@/lib/services/appwrite/server';
 import { createUser } from '@/lib/services/appwrite/database';
 import { z } from 'zod';
 import { ID } from 'appwrite';
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, password, name } = registerSchema.parse(body);
     
+    const { account } = await createAdminClient();
     // Create Appwrite account
     const user = await account.create(ID.unique(), email, password, name);
     
@@ -27,9 +28,16 @@ export async function POST(req: NextRequest) {
     });
     
     // Create session for the user
-    const session = await account.createSession(email, password);
+    const session = await account.createEmailPasswordSession(email, password);
     
-    return NextResponse.json({ user, session });
+    const response = NextResponse.json({ user, session });
+    response.cookies.set(`a_session_${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`, session.$id, {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+    return response;
   } catch (error: any) {
     console.error('Registration error:', error);
     return NextResponse.json({ error: error.message }, { status: 400 });
