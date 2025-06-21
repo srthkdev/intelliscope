@@ -12,9 +12,16 @@ export function UserMenu() {
   return (
     <div className="flex items-center gap-4">
       <span className="text-sm text-muted-foreground">{user.email}</span>
-      <button onClick={handleLogout} className="btn btn-outline btn-sm" disabled={loading}>
+      {user.userData?.name && (
+        <span className="text-sm font-medium">{user.userData.name}</span>
+      )}
+      <button 
+        onClick={handleLogout} 
+        className="btn btn-outline btn-sm" 
+        disabled={loading}
+      >
         {loading ? 'Logging out...' : 'Logout'}
       </button>
     </div>
   );
-} 
+}

@@ -94,6 +94,12 @@ export function LoginForm() {
           <Separator className="flex-1" />
         </div>
         <GoogleAuthButton />
+        <div className="text-center text-sm">
+          Don't have an account?{" "}
+          <Button variant="link" className="p-0 h-auto" onClick={() => router.push('/register')}>
+            Register here
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   )

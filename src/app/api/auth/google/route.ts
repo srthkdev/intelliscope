@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { account } from '@/lib/services/appwrite/client';
-import { Models } from 'appwrite';
+import { OAuthProvider } from 'appwrite';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,9 +8,8 @@ export async function GET(request: NextRequest) {
     const origin = new URL(request.url).origin;
     
     // Create OAuth2 session with Google
-    // Using string literal as the first parameter which Appwrite accepts
     await account.createOAuth2Session(
-      'google' as any, // Type assertion to bypass TypeScript error
+      OAuthProvider.GOOGLE || 'google', // Use enum if available, fallback to string
       `${origin}/dashboard`, // Success URL
       `${origin}/login`      // Failure URL
     );

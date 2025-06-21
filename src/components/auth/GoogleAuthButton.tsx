@@ -2,15 +2,20 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth-store';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export function GoogleAuthButton() {
-  const { loading } = useAuthStore();
+  const { loading: authLoading } = useAuthStore();
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleGoogleAuth = async () => {
     try {
+      setLoading(true);
       router.push('/api/auth/google');
+      // Note: The page will navigate away, so we don't need to set loading back to false
     } catch (error: any) {
+      setLoading(false);
       toast.error(error.message || 'Failed to authenticate with Google');
     }
   };
