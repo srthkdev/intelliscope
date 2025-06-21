@@ -13,6 +13,9 @@ export interface Investigation {
   confidenceScore: number
   estimatedCompletion?: Date
   actualCompletion?: Date
+  findings: Finding[]
+  sources: Source[]
+  leads: Lead[]
 }
 
 export interface Source {

@@ -22,7 +22,7 @@ export interface AgentConfig {
   confidence_threshold: number
   max_sources_per_query: number
   enable_deep_crawl: boolean
-  llm_model: 'gpt-4' | 'claude-3-sonnet' | 'groq-llama'
+  llm_model: 'gpt-4' | 'claude-3-sonnet' | 'groq-llama' | 'llama-3.3-70b-versatile'
   search_depth: 'basic' | 'advanced'
   memory_enabled: boolean
 }

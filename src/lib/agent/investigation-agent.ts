@@ -16,10 +16,10 @@ export class InvestigationAgent {
   private state: AgentState;
 
   constructor(config?: Partial<AgentConfig>) {
-    // Initialize clients
-    this.tavilyClient = new TavilyClient();
-    this.mem0Client = new Mem0Client();
-    this.groqClient = new GroqClient();
+    // Initialize clients with environment variables
+    this.tavilyClient = new TavilyClient(process.env.TAVILY_API_KEY!);
+    this.mem0Client = new Mem0Client(process.env.MEM0_API_KEY!, 'default-user');
+    this.groqClient = new GroqClient(process.env.GROQ_API_KEY!, 'llama-3.3-70b-versatile');
 
     // Set default configuration
     this.config = {
@@ -27,7 +27,7 @@ export class InvestigationAgent {
       confidence_threshold: 0.7,
       max_sources_per_query: 5,
       enable_deep_crawl: true,
-      llm_model: 'gpt-4',
+      llm_model: 'llama-3.3-70b-versatile',
       search_depth: 'advanced',
       memory_enabled: true,
       ...config

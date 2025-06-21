@@ -1,82 +1,65 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { Groq } from 'groq-sdk';
-import { ChatCompletionChunk, Stream } from 'groq-sdk/resources/chat/completions';
+import { ChatCompletionChunk } from 'groq-sdk/resources/chat/completions';
 
 export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   try {
     const { prompt } = await req.json();
-    
     if (!prompt) {
-      return NextResponse.json(
-        { error: 'Prompt is required' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: 'Prompt is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
-    
     const apiKey = process.env.GROQ_API_KEY;
-    
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Groq API key is not configured' },
-        { status: 500 }
-      );
+      return new Response(JSON.stringify({ error: 'Groq API key is not configured' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
-    
     const groq = new Groq({ apiKey });
-    
-    // Create a TransformStream to handle the streaming response
     const encoder = new TextEncoder();
-    const stream = new TransformStream();
-    const writer = stream.writable.getWriter();
-    
-    // Start the response stream
-    const response = NextResponse.json(
-      { message: 'Streaming response' },
-      { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
-    );
-    
-    response.body = stream.readable;
-    
-    // Process in the background
-    (async () => {
-      try {
-        const chatCompletion = await groq.chat.completions.create({
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          model: 'llama-3.3-70b-versatile',
-          temperature: 0.7,
-          max_tokens: 1024,
-          top_p: 1,
-          stream: true,
-          stop: null
-        });
-        
-        for await (const chunk of chatCompletion as Stream<ChatCompletionChunk>) {
-          const content = chunk.choices[0]?.delta?.content || '';
-          await writer.write(encoder.encode(content));
+    // Use a ReadableStream for streaming response
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const chatCompletion = await groq.chat.completions.create({
+            messages: [
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            model: 'llama-3.3-70b-versatile',
+            temperature: 0.7,
+            max_tokens: 1024,
+            top_p: 1,
+            stream: true,
+            stop: null
+          });
+          for await (const chunk of chatCompletion as AsyncIterable<ChatCompletionChunk>) {
+            const content = chunk.choices[0]?.delta?.content || '';
+            controller.enqueue(encoder.encode(content));
+          }
+        } catch (error) {
+          const errorMessage = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          controller.enqueue(encoder.encode(errorMessage));
+        } finally {
+          controller.close();
         }
-      } catch (error) {
-        console.error('Error streaming from Groq:', error);
-        // Write error message to the stream
-        const errorMessage = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        await writer.write(encoder.encode(errorMessage));
-      } finally {
-        await writer.close();
       }
-    })();
-    
-    return response;
+    });
+    return new Response(stream, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
   } catch (error) {
-    console.error('Request error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: 'Failed to process request' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

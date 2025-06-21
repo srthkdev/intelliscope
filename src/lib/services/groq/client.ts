@@ -1,6 +1,6 @@
 import { Groq } from 'groq-sdk';
 import { AgentDecision } from '@/types/agent';
-import { ChatCompletion, ChatCompletionChunk, Stream } from 'groq-sdk/resources/chat/completions';
+import { ChatCompletion, ChatCompletionChunk } from 'groq-sdk/resources/chat/completions';
 
 export class GroqClient {
   private client: Groq;
@@ -67,7 +67,7 @@ export class GroqClient {
         stream: true
       });
       
-      for await (const chunk of chatCompletion as Stream<ChatCompletionChunk>) {
+      for await (const chunk of chatCompletion as AsyncIterable<ChatCompletionChunk>) {
         yield chunk.choices[0]?.delta?.content || '';
       }
     } catch (error) {
@@ -79,21 +79,22 @@ export class GroqClient {
   /**
    * Analyze a user query to understand the investigation requirements
    */
-  async analyzeQuery(query: string): Promise<{ topic: string; objectives: string[]; relevantKeywords: string[] }> {
+  async analyzeQuery(query: string, context?: string): Promise<{ entities: string[]; topics: string[]; complexity: string }> {
+    const contextText = context ? `\n\nContext: ${context}` : '';
     const prompt = `
       You are an expert research analyst. Analyze the following investigation query and extract:
-      1. The main topic of investigation
-      2. Key objectives (list 3-5 specific goals)
-      3. Relevant keywords for search (list 5-10 keywords)
+      1. Named entities (people, organizations, locations, etc.)
+      2. Main topics of investigation
+      3. Query complexity (simple, moderate, complex)
       
       Format your response as JSON with the following structure:
       {
-        "topic": "main topic",
-        "objectives": ["objective 1", "objective 2", ...],
-        "relevantKeywords": ["keyword1", "keyword2", ...]
+        "entities": ["entity1", "entity2", ...],
+        "topics": ["topic1", "topic2", ...],
+        "complexity": "simple" | "moderate" | "complex"
       }
       
-      Query: ${query}
+      Query: ${query}${contextText}
     `;
     
     try {
@@ -103,29 +104,33 @@ export class GroqClient {
       console.error('Error analyzing query:', error);
       // Return a default structure if parsing fails
       return {
-        topic: query,
-        objectives: ['Gather relevant information'],
-        relevantKeywords: [query]
+        entities: [],
+        topics: [query],
+        complexity: 'moderate'
       };
     }
   }
   
   /**
-   * Generate an investigation plan based on the query analysis
+   * Generate an investigation plan based on the query and config
    */
-  async generatePlan(query: string, analysis: { topic: string; objectives: string[]; relevantKeywords: string[] }): Promise<string[]> {
+  async generatePlan(query: string, config: any): Promise<{ steps: string[]; estimated_time: string }> {
     const prompt = `
-      You are an expert investigation planner. Based on the following query and analysis, create a step-by-step plan for investigation:
+      You are an expert investigation planner. Based on the following query and configuration, create a step-by-step plan for investigation:
       
       Query: ${query}
       
-      Analysis:
-      - Topic: ${analysis.topic}
-      - Objectives: ${analysis.objectives.join(', ')}
-      - Keywords: ${analysis.relevantKeywords.join(', ')}
+      Configuration:
+      - Max steps: ${config.max_steps}
+      - Search depth: ${config.search_depth}
+      - Enable deep crawl: ${config.enable_deep_crawl}
       
-      Create a detailed investigation plan with 5-7 specific steps. Each step should be actionable and help achieve the objectives.
-      Format your response as a JSON array of strings, with each string being a step in the plan.
+      Create a detailed investigation plan with 5-7 specific steps. Each step should be actionable.
+      Format your response as JSON with the following structure:
+      {
+        "steps": ["step1", "step2", ...],
+        "estimated_time": "estimated time in minutes"
+      }
     `;
     
     try {
@@ -134,12 +139,15 @@ export class GroqClient {
     } catch (error) {
       console.error('Error generating plan:', error);
       // Return a default plan if parsing fails
-      return [
-        'Search for relevant information',
-        'Analyze the search results',
-        'Generate findings based on the analysis',
-        'Identify potential leads for further investigation'
-      ];
+      return {
+        steps: [
+          'Search for relevant information',
+          'Analyze the search results',
+          'Generate findings based on the analysis',
+          'Identify potential leads for further investigation'
+        ],
+        estimated_time: '15-30 minutes'
+      };
     }
   }
   
@@ -178,18 +186,18 @@ export class GroqClient {
   }
   
   /**
-   * Generate a summary of findings based on the collected information
+   * Generate a summary of findings based on the collected sources
    */
-  async summarizeFindings(query: string, findings: string[]): Promise<{ summary: string; confidence: number }> {
-    const findingsText = findings.join('\n- ');
+  async summarizeFindings(sources: { url: string; title: string; content: string }[], query: string): Promise<{ summary: string; confidence: number }> {
+    const sourcesText = sources.map(source => `${source.title}: ${source.content.substring(0, 200)}...`).join('\n- ');
     
     const prompt = `
-      You are an expert investigator. Based on the following findings, create a comprehensive summary for the investigation query: "${query}"
+      You are an expert investigator. Based on the following sources, create a comprehensive summary for the investigation query: "${query}"
       
-      Findings:
-      - ${findingsText}
+      Sources:
+      - ${sourcesText}
       
-      Provide a detailed summary that synthesizes these findings and assign an overall confidence score from 0.0 to 1.0.
+      Provide a detailed summary that synthesizes these sources and assign an overall confidence score from 0.0 to 1.0.
       Format your response as JSON with the following structure:
       {
         "summary": "your detailed summary here",
